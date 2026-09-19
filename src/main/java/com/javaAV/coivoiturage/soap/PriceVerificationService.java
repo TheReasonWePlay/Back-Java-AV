@@ -8,17 +8,27 @@ import org.springframework.stereotype.Service;
 @Service
 public class PriceVerificationService {
 
-    private static final BigDecimal
-            TARIF_PAR_PLACE = new BigDecimal("20000");
+    private static final BigDecimal TARIF_BASE =
+            new BigDecimal("2000");
 
-    private static final BigDecimal
-            TOLERANCE = new BigDecimal("0.20");
+    private static final BigDecimal TARIF_PAR_KM =
+            new BigDecimal("500");
 
-    public BigDecimal calculerPrixRecommande(int nombrePlaces) {
+    private static final BigDecimal TOLERANCE =
+            new BigDecimal("0.20");
 
-        return TARIF_PAR_PLACE.multiply(
-                BigDecimal.valueOf(nombrePlaces)
-        );
+    public BigDecimal calculerPrixRecommande(
+            BigDecimal distanceKm,
+            int nombrePlaces) {
+
+        BigDecimal prixParPlace =
+                TARIF_BASE.add(
+                        distanceKm.multiply(TARIF_PAR_KM)
+                );
+
+        return prixParPlace
+                .multiply(BigDecimal.valueOf(nombrePlaces))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     public boolean verifierPrix(

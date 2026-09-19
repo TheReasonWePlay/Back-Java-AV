@@ -32,17 +32,26 @@ public class PriceVerificationEndpoint {
     public VerifierPrixResponse verifierPrix(
             @RequestPayload VerifierPrixRequest request) {
 
-        BigDecimal prixPropose = request.getPrixPropose();
+        BigDecimal prixPropose =
+                request.getPrixPropose();
 
-        int nombrePlaces = request.getNombrePlaces();
+        int nombrePlaces =
+                request.getNombrePlaces();
+
+        BigDecimal distanceKm =
+                request.getDistanceKm();
 
         BigDecimal prixRecommande =
-                priceService.calculerPrixRecommande(nombrePlaces);
+                priceService.calculerPrixRecommande(
+                        distanceKm,
+                        nombrePlaces
+                );
 
-        boolean valide = priceService.verifierPrix(
-                prixPropose,
-                prixRecommande
-        );
+        boolean valide =
+                priceService.verifierPrix(
+                        prixPropose,
+                        prixRecommande
+                );
 
         VerifierPrixResponse response =
                 new VerifierPrixResponse();
