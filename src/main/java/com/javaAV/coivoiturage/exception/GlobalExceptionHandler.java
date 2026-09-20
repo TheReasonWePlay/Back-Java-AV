@@ -66,4 +66,20 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(erreur);
     }
+    
+    @ExceptionHandler(ReservationException.class)
+    public ResponseEntity<Map<String, Object>> gererReservationException(
+            ReservationException exception) {
+
+        Map<String, Object> erreur = new LinkedHashMap<>();
+
+        erreur.put("timestamp", Instant.now().toString());
+        erreur.put("status", 400);
+        erreur.put("error", "Bad Request");
+        erreur.put("message", exception.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(erreur);
+    }
 }
