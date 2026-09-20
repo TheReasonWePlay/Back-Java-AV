@@ -1,0 +1,660 @@
+============================================================
+        DOCUMENTATION API - CARGO
+        Backend Spring Boot + MySQL
+============================================================
+
+Projet : Application de covoiturage CarGo
+Backend : Spring Boot
+Base de données : MySQL
+Communication REST : HTTP / JSON
+Communication SOAP : XML
+Communication Socket : TCP
+Port REST : 8080
+Port Socket : 6000
+
+
+============================================================
+1. API TRAJET
+============================================================
+
+URL DE BASE :
+http://localhost:8080/api/trajets
+
+
+------------------------------------------------------------
+1.1 CREER UN TRAJET
+------------------------------------------------------------
+
+Méthode :
+POST
+
+URL :
+/api/trajets
+
+Description :
+Permet de créer un nouveau trajet.
+La distance est automatiquement recherchée dans la base
+de données selon le départ et la destination.
+Le prix est vérifié par le service SOAP.
+
+DONNEES RECUES (JSON) :
+
+{
+    "conducteur": "Jean",
+    "depart": "Fianarantsoa",
+    "destination": "Ambalavao",
+    "date": "2026-09-25",
+    "heure": "08:30:00",
+    "places": 4,
+    "prix": 15000
+}
+
+Champs reçus :
+
+- conducteur : String
+- depart : String
+- destination : String
+- date : LocalDate (AAAA-MM-JJ)
+- heure : LocalTime (HH:mm:ss)
+- places : int
+- prix : BigDecimal
+
+La distance n'est PAS envoyée par le client.
+Elle est recherchée automatiquement dans la table
+distance_trajet.
+
+
+REPONSE EN CAS DE SUCCES :
+
+Code HTTP :
+201 Created
+
+Exemple :
+
+{
+    "id": 1,
+    "conducteur": "Jean",
+    "depart": "Fianarantsoa",
+    "destination": "Ambalavao",
+    "date": "2026-09-25",
+    "heure": "08:30:00",
+    "places": 4,
+    "prix": 15000,
+    "distanceKm": 56.00,
+    "statut": "EN_ATTENTE"
+}
+
+
+ERREURS POSSIBLES :
+
+400 Bad Request :
+- Données invalides.
+- Prix non accepté par le service SOAP.
+- Nombre de places invalide.
+
+404 Not Found :
+- Distance non enregistrée pour le départ et
+  la destination indiqués.
+
+
+------------------------------------------------------------
+1.2 RECUPERER TOUS LES TRAJETS
+------------------------------------------------------------
+
+Méthode :
+GET
+
+URL :
+/api/trajets
+
+Description :
+Retourne la liste de tous les trajets enregistrés.
+
+DONNEES RECUES :
+Aucune.
+
+REPONSE :
+
+Code HTTP :
+200 OK
+
+Format :
+Liste JSON de trajets.
+
+Exemple :
+
+[
+    {
+        "id": 1,
+        "conducteur": "Jean",
+        "depart": "Fianarantsoa",
+        "destination": "Ambalavao",
+        "date": "2026-09-25",
+        "heure": "08:30:00",
+        "places": 4,
+        "prix": 15000,
+        "distanceKm": 56.00,
+        "statut": "EN_ATTENTE"
+    }
+]
+
+
+------------------------------------------------------------
+1.3 RECUPERER UN TRAJET PAR SON ID
+------------------------------------------------------------
+
+Méthode :
+GET
+
+URL :
+/api/trajets/{id}
+
+Exemple :
+/api/trajets/1
+
+Description :
+Retourne les informations d'un trajet spécifique.
+
+DONNEES RECUES :
+Aucune donnée dans le body.
+L'identifiant est envoyé dans l'URL.
+
+REPONSE :
+
+Code HTTP :
+200 OK
+
+Exemple :
+
+{
+    "id": 1,
+    "conducteur": "Jean",
+    "depart": "Fianarantsoa",
+    "destination": "Ambalavao",
+    "date": "2026-09-25",
+    "heure": "08:30:00",
+    "places": 4,
+    "prix": 15000,
+    "distanceKm": 56.00,
+    "statut": "EN_ATTENTE"
+}
+
+
+------------------------------------------------------------
+1.4 SUPPRIMER UN TRAJET
+------------------------------------------------------------
+
+Méthode :
+DELETE
+
+URL :
+/api/trajets/{id}
+
+Exemple :
+/api/trajets/1
+
+Description :
+Supprime un trajet selon son identifiant.
+
+DONNEES RECUES :
+Aucune.
+
+REPONSE :
+Selon l'implémentation du contrôleur, la réponse indique
+la suppression du trajet.
+
+
+============================================================
+2. API RESERVATION
+============================================================
+
+URL DE BASE :
+http://localhost:8080/api/reservations
+
+
+------------------------------------------------------------
+2.1 CREER UNE RESERVATION
+------------------------------------------------------------
+
+Méthode :
+POST
+
+URL :
+/api/reservations
+
+Description :
+Permet à un passager de réserver une ou plusieurs places
+sur un trajet.
+
+Le backend vérifie :
+- L'existence du trajet.
+- Le nombre de places demandé.
+- La disponibilité des places.
+
+Après confirmation :
+- La réservation est enregistrée.
+- Le nombre de places disponibles diminue.
+- Une notification TCP est envoyée au conducteur
+  connecté, si celui-ci est disponible.
+
+DONNEES RECUES (JSON) :
+
+{
+    "trajetId": 1,
+    "passager": "Marie",
+    "nombrePlaces": 2
+}
+
+Champs reçus :
+
+- trajetId : Long
+- passager : String
+- nombrePlaces : int
+
+
+REPONSE EN CAS DE SUCCES :
+
+Code HTTP :
+201 Created
+
+Exemple :
+
+{
+    "id": 1,
+    "trajet": {
+        "id": 1,
+        "conducteur": "Jean",
+        "depart": "Fianarantsoa",
+        "destination": "Ambalavao"
+    },
+    "passager": "Marie",
+    "nombrePlaces": 2,
+    "statut": "CONFIRMEE",
+    "dateReservation": "2026-09-20T12:30:00"
+}
+
+
+ERREURS POSSIBLES :
+
+400 Bad Request :
+- Nombre de places inférieur ou égal à zéro.
+- Nombre de places insuffisant.
+- Trajet inexistant.
+- Données invalides.
+
+
+------------------------------------------------------------
+2.2 RECUPERER TOUTES LES RESERVATIONS
+------------------------------------------------------------
+
+Méthode :
+GET
+
+URL :
+/api/reservations
+
+Description :
+Retourne toutes les réservations enregistrées.
+
+DONNEES RECUES :
+Aucune.
+
+REPONSE :
+200 OK
+
+Format :
+Liste JSON de réservations.
+
+
+------------------------------------------------------------
+2.3 RECUPERER UNE RESERVATION PAR SON ID
+------------------------------------------------------------
+
+Méthode :
+GET
+
+URL :
+/api/reservations/{id}
+
+Exemple :
+/api/reservations/1
+
+Description :
+Retourne une réservation spécifique.
+
+DONNEES RECUES :
+Aucune dans le body.
+
+
+REPONSE :
+200 OK
+
+Format :
+Objet Reservation.
+
+
+------------------------------------------------------------
+2.4 RECUPERER LES RESERVATIONS D'UN TRAJET
+------------------------------------------------------------
+
+Méthode :
+GET
+
+URL :
+/api/reservations/trajet/{trajetId}
+
+Exemple :
+/api/reservations/trajet/1
+
+Description :
+Retourne toutes les réservations associées à un trajet.
+
+DONNEES RECUES :
+trajetId dans l'URL.
+
+REPONSE :
+200 OK
+
+Format :
+Liste JSON de réservations.
+
+
+------------------------------------------------------------
+2.5 RECUPERER LES RESERVATIONS D'UN PASSAGER
+------------------------------------------------------------
+
+Méthode :
+GET
+
+URL :
+/api/reservations/passager/{passager}
+
+Exemple :
+/api/reservations/passager/Marie
+
+Description :
+Retourne les réservations d'un passager.
+
+DONNEES RECUES :
+Nom du passager dans l'URL.
+
+REPONSE :
+200 OK
+
+Format :
+Liste JSON de réservations.
+
+
+------------------------------------------------------------
+2.6 ANNULER UNE RESERVATION
+------------------------------------------------------------
+
+Méthode :
+PUT
+
+URL :
+/api/reservations/{id}/annuler
+
+Exemple :
+/api/reservations/1/annuler
+
+Description :
+Annule une réservation existante.
+
+Traitements :
+- Vérification du statut de la réservation.
+- Restitution des places au trajet.
+- Modification du statut en ANNULEE.
+- Conservation de l'historique de la réservation.
+
+DONNEES RECUES :
+Aucune dans le body.
+
+REPONSE :
+200 OK
+
+Exemple :
+
+{
+    "id": 1,
+    "passager": "Marie",
+    "nombrePlaces": 2,
+    "statut": "ANNULEE"
+}
+
+
+------------------------------------------------------------
+2.7 SUPPRIMER UNE RESERVATION
+------------------------------------------------------------
+
+Méthode :
+DELETE
+
+URL :
+/api/reservations/{id}
+
+Exemple :
+/api/reservations/1
+
+Description :
+Supprime définitivement une réservation.
+
+Si la réservation est encore confirmée,
+les places sont restituées au trajet.
+
+DONNEES RECUES :
+Aucune.
+
+REPONSE :
+204 No Content
+
+
+============================================================
+3. SERVICE SOAP : VERIFICATION DU PRIX
+============================================================
+
+URL DU SERVICE SOAP :
+http://localhost:8080/services
+
+Namespace :
+http://cargo.com/soap/price
+
+Opération :
+verifierPrix
+
+Description :
+Le service SOAP calcule le prix recommandé d'un trajet
+et vérifie si le prix proposé est acceptable.
+
+Le calcul utilise :
+- Le tarif de base.
+- La distance en kilomètres.
+- Le nombre de places.
+
+
+------------------------------------------------------------
+3.1 REQUETE SOAP
+------------------------------------------------------------
+
+DONNEES RECUES :
+
+- prixPropose : decimal
+- nombrePlaces : int
+- distanceKm : decimal
+
+Structure XML simplifiée :
+
+<verifierPrixRequest
+    xmlns="http://cargo.com/soap/price">
+
+    <prixPropose>15000</prixPropose>
+    <nombrePlaces>4</nombrePlaces>
+    <distanceKm>56.00</distanceKm>
+
+</verifierPrixRequest>
+
+
+------------------------------------------------------------
+3.2 REPONSE SOAP
+------------------------------------------------------------
+
+DONNEES RENVOYEES :
+
+- prixRecommande : decimal
+- statut : String
+- message : String
+
+Structure XML simplifiée :
+
+<verifierPrixResponse
+    xmlns="http://cargo.com/soap/price">
+
+    <prixRecommande>128000.00</prixRecommande>
+    <statut>REFUSE</statut>
+    <message>Le prix proposé est invalide</message>
+
+</verifierPrixResponse>
+
+
+STATUTS POSSIBLES :
+
+ACCEPTE :
+Le prix proposé respecte la tolérance autorisée.
+
+REFUSE :
+Le prix proposé est trop éloigné du prix recommandé.
+
+
+============================================================
+4. COMMUNICATION TCP SOCKET
+============================================================
+
+Type :
+TCP Socket Java
+
+Port :
+6000
+
+Serveur :
+Spring Boot avec ServerSocket
+
+Client :
+Application Java ou Android avec Socket
+
+
+------------------------------------------------------------
+4.1 CONNEXION DU CLIENT
+------------------------------------------------------------
+
+Le client se connecte à :
+
+HOST : Adresse IP du serveur
+PORT : 6000
+
+Exemple :
+
+localhost:6000
+
+Pour un émulateur Android :
+
+10.0.2.2:6000
+
+
+------------------------------------------------------------
+4.2 INSCRIPTION DU CLIENT
+------------------------------------------------------------
+
+Après la connexion, le client envoie :
+
+REGISTER:Jean
+
+Le nom permet d'identifier le client connecté.
+
+REPONSE DU SERVEUR :
+
+CONNECTE: Bienvenue Jean
+
+
+------------------------------------------------------------
+4.3 NOTIFICATION DE RESERVATION
+------------------------------------------------------------
+
+Lorsqu'une réservation est confirmée,
+Spring Boot envoie une notification au conducteur.
+
+Exemple :
+
+NOTIFICATION:Nouvelle réservation :
+2 place(s) réservée(s) par Marie
+
+
+------------------------------------------------------------
+4.4 DECONNEXION
+------------------------------------------------------------
+
+Lorsque le client se déconnecte :
+- La connexion TCP est fermée.
+- Le client est retiré de la liste des clients connectés.
+
+
+REMARQUE :
+Le système actuel utilise le nom du conducteur
+comme identifiant de connexion de démonstration.
+Il ne s'agit pas encore d'un système d'authentification.
+
+
+============================================================
+5. RESUME DES ENDPOINTS REST
+============================================================
+
+TRAJET :
+
+POST    /api/trajets
+GET     /api/trajets
+GET     /api/trajets/{id}
+DELETE  /api/trajets/{id}
+
+
+RESERVATION :
+
+POST    /api/reservations
+GET     /api/reservations
+GET     /api/reservations/{id}
+GET     /api/reservations/trajet/{trajetId}
+GET     /api/reservations/passager/{passager}
+PUT     /api/reservations/{id}/annuler
+DELETE  /api/reservations/{id}
+
+
+============================================================
+6. SCENARIO COMPLET DE FONCTIONNEMENT
+============================================================
+
+1. Le conducteur crée un trajet avec REST.
+
+2. Spring Boot recherche la distance dans MySQL.
+
+3. Spring Boot appelle le service SOAP.
+
+4. Le prix proposé est vérifié.
+
+5. Si le prix est accepté, le trajet est enregistré.
+
+6. Le passager crée une réservation avec REST.
+
+7. Spring Boot vérifie la disponibilité des places.
+
+8. La réservation est enregistrée.
+
+9. Le nombre de places disponibles diminue.
+
+10. Une notification TCP est envoyée au conducteur
+    connecté.
+
+11. Le conducteur reçoit la notification dans
+    son application Android.
+
+
+============================================================
+FIN DE LA DOCUMENTATION
+============================================================
