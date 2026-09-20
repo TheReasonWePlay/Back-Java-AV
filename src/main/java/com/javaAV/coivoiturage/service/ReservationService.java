@@ -12,19 +12,23 @@ import com.javaAV.coivoiturage.entity.Trajet;
 import com.javaAV.coivoiturage.exception.ReservationException;
 import com.javaAV.coivoiturage.repository.ReservationRepository;
 import com.javaAV.coivoiturage.repository.TrajetRepository;
+import com.javaAV.coivoiturage.socket.SocketNotificationService;
 
 @Service
 public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final TrajetRepository trajetRepository;
+    private final SocketNotificationService socketNotificationService;
 
     public ReservationService(
             ReservationRepository reservationRepository,
-            TrajetRepository trajetRepository) {
+            TrajetRepository trajetRepository,
+            SocketNotificationService socketNotificationService) {
 
         this.reservationRepository = reservationRepository;
         this.trajetRepository = trajetRepository;
+        this.socketNotificationService = socketNotificationService;
     }
 
     // Créer une réservation
@@ -58,7 +62,7 @@ public class ReservationService {
 
         trajetRepository.save(trajet);
 
-        // Création de la réservation
+     // Création de la réservation
         Reservation reservation = new Reservation();
 
         reservation.setTrajet(trajet);
@@ -67,7 +71,21 @@ public class ReservationService {
         reservation.setStatut("CONFIRMEE");
         reservation.setDateReservation(LocalDateTime.now());
 
-        return reservationRepository.save(reservation);
+        Reservation reservationSauvegardee =
+                reservationRepository.save(reservation);
+
+        // Notification du conducteur
+        String message = "Nouvelle réservation : "
+                + request.getNombrePlaces()
+                + " place(s) réservée(s) par "
+                + request.getPassager();
+
+        socketNotificationService.notifierConducteur(
+                trajet.getConducteur(),
+                message
+        );
+
+        return reservationSauvegardee;
     }
 
     // Récupérer toutes les réservations
