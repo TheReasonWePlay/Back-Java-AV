@@ -1,7 +1,6 @@
 package com.javaAV.coivoiturage.soap;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 import org.springframework.stereotype.Service;
 
@@ -9,26 +8,52 @@ import org.springframework.stereotype.Service;
 public class PriceVerificationService {
 
     private static final BigDecimal TARIF_BASE =
-            new BigDecimal("2000");
+            new BigDecimal("1000");
 
-    private static final BigDecimal TARIF_PAR_KM =
-            new BigDecimal("500");
+    private static final BigDecimal TARIF_MOINS_100 =
+            new BigDecimal("80");
+
+    private static final BigDecimal TARIF_MOINS_200 =
+            new BigDecimal("100");
+
+    private static final BigDecimal TARIF_MOINS_450 =
+            new BigDecimal("120");
+
+    private static final BigDecimal TARIF_PLUS_450 =
+            new BigDecimal("140");
 
     private static final BigDecimal TOLERANCE =
-            new BigDecimal("0.20");
+            new BigDecimal("0.10");
 
     public BigDecimal calculerPrixRecommande(
             BigDecimal distanceKm,
             int nombrePlaces) {
 
+        BigDecimal tarifParKm;
+
+        if (distanceKm.compareTo(new BigDecimal("100")) < 0) {
+
+            tarifParKm = TARIF_MOINS_100;
+
+        } else if (distanceKm.compareTo(new BigDecimal("200")) < 0) {
+
+            tarifParKm = TARIF_MOINS_200;
+
+        } else if (distanceKm.compareTo(new BigDecimal("450")) <= 0) {
+
+            tarifParKm = TARIF_MOINS_450;
+
+        } else {
+
+            tarifParKm = TARIF_PLUS_450;
+        }
+
         BigDecimal prixParPlace =
                 TARIF_BASE.add(
-                        distanceKm.multiply(TARIF_PAR_KM)
+                        distanceKm.multiply(tarifParKm)
                 );
 
-        return prixParPlace
-                .multiply(BigDecimal.valueOf(nombrePlaces))
-                .setScale(2, RoundingMode.HALF_UP);
+        return prixParPlace;
     }
 
     public boolean verifierPrix(
